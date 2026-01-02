@@ -1,0 +1,102 @@
+{% extends 'main.html' %}
+
+{% block content %}
+	<main class="create-room layout">
+		<div class="container">
+			<div class="layout__box">
+				<div class="layout__boxHeader">
+					<div class="layout__boxTitle">
+						<a href="{% url 'home' %}">
+							<svg version="1.1" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+								<title>arrow-left</title>
+								<path
+									d="M13.723 2.286l-13.723 13.714 13.719 13.714 1.616-1.611-10.96-10.96h27.625v-2.286h-27.625l10.965-10.965-1.616-1.607z"
+								></path>
+							</svg>
+						</a>
+						<h3>Create/Update Your Memory</h3>
+					</div>
+				</div>
+				<div class="layout__body">
+					<form class="form" id="post-form" action="{% if post.id %}{% url 'update-post' post.id %}{% else %}{% url 'create-post' %}{% endif %}" method="POST" enctype="multipart/form-data">
+						{% csrf_token %}
+						{{ form.non_field_errors }}
+
+						<div class="form__group">
+							<label for="room_topic">Enter a Topic</label>
+							<input required type="text" value="{{post.topic.name}}" name="topic" list="topic-list" />
+							<datalist id="topic-list">
+								{% for topic in topics %}
+								<option value="{{topic.name}}"></option>
+								{% endfor %}
+							</datalist>
+						</div>
+
+						<div class="form__group">
+							<label for="post_caption">Caption</label>
+							{{ form.caption.errors }}
+							{{ form.caption }}
+						</div>
+
+						<div class="form__group">
+							<label for="post_photo">Upload Photo</label>
+							{{ form.photo.errors }}
+							{{ form.photo }}
+						</div>
+
+						{{ form.latitude }}
+						{{ form.longitude }}
+
+						<div class="form__group">
+							<button type="button" id="get-location-btn" class="btn btn--secondary">📍 Get My Current Location</button>
+						</div>
+
+						<div class="form__action">
+							<a class="btn btn--dark" href="{% url 'home' %}">Cancel</a>
+							<button class="btn btn--main" type="submit">Submit</button>
+						</div>
+					</form>
+				</div>
+			</div>
+		</div>
+	</main>
+	<script>
+		// Find the button and the hidden input fields
+		const getLocationBtn = document.getElementById('get-location-btn');
+		const latitudeInput = document.getElementById('id_latitude');
+		const longitudeInput = document.getElementById('id_longitude');
+
+		getLocationBtn.addEventListener('click', () => {
+			// Check if Geolocation is supported by the browser
+			if ('geolocation' in navigator) {
+				console.log('Geolocation is available');
+
+				// This triggers the browser's permission prompt
+				navigator.geolocation.getCurrentPosition(
+					(position) => {
+						// SUCCESS! We have the coordinates.
+						const lat = position.coords.latitude;
+						const lon = position.coords.longitude;
+
+						console.log(`Latitude: ${lat}, Longitude: ${lon}`);
+
+						// Put the coordinates into our hidden form fields
+						latitudeInput.value = lat;
+						longitudeInput.value = lon;
+
+						// Give the user some feedback
+						alert(`Location found! Your coordinates have been set.`);
+					},
+					(error) => {
+						// ERROR! Handle cases where the user denies permission or an error occurs.
+						console.error(`Error getting location: ${error.message}`);
+						alert('Could not get your location. Please make sure you grant permission.');
+					}
+				);
+			} else {
+				console.error('Geolocation is not available in this browser.');
+				alert('Sorry, your browser does not support geolocation.');
+			}
+		});
+	</script>
+{% endblock content %}

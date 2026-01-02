@@ -1,0 +1,65 @@
+{% extends 'main.html' %}
+
+{% block content %}
+  <main class="profile-page layout layout--3">
+    <div class="container">
+      <!-- Topics Start -->
+      {% include 'core/topics_component.html'%}
+      <!-- Topics End -->
+
+      <!-- Room List Start -->
+      <div class="roomList">
+        <div class="profile">
+          <div class="profile__avatar">
+            <div class="avatar avatar--large active">
+              <img src="https://randomuser.me/api/portraits/men/11.jpg" />
+            </div>
+          </div>
+          <div class="profile__info">
+            <h3>{{user.username}}</h3>
+            <p>@{{user.username}}</p>
+            {% if request.user == user %}
+              <a href="#" class="btn btn--main btn--pill">Edit Profile</a>
+              <!--  url 'update-user'  -->
+            {% elif request.user.is_authenticated %}
+              {% if friendship_status == 'accepted' %}
+                <a href="{% url 'remove_friend' user.id %}" class="btn btn--main btn--pill">Remove Friend</a>
+              {% elif friendship_status == 'pending' %}
+                <button class="btn btn--main btn--pill" disabled>Request Sent</button>
+              {% elif friendship_status == 'received_pending' %}
+                <div style="display: flex; gap: 10px;">
+                  <a href="{% url 'manage_friend_request' user.id 'accept' %}" class="btn btn--main btn--pill">Accept</a>
+                  <a href="{% url 'manage_friend_request' user.id 'decline' %}" class="btn btn--pill" style="background-color: #dc3545; color: white;">Decline</a>
+                </div>
+              {% else %}
+                <a href="{% url 'send_friend_request' user.id %}" class="btn btn--main btn--pill">Add Friend</a>
+              {% endif %}
+            {% endif %}
+          </div>
+          <div class="profile__about">
+            <h3>About</h3>
+            <p>
+              Lorem ipsum dolor sit amet consectetur adipisicing elit. Consequuntur illo tenetur
+              facilis sunt nemo debitis quisquam hic atque aut? Ducimus alias placeat optio
+              accusamus repudiandae quis ab ex exercitationem rem?
+            </p>
+          </div>
+        </div>
+
+        <div class="roomList__header">
+          <div>
+            <h2>Memories by {{user.username}}</a>
+            </h2>
+          </div>
+        </div>
+        {% include 'core/feed_component.html'%}
+
+      </div>
+      <!-- Room List End -->
+
+      <!-- Activities Start -->
+      {% include 'core/activity_component.html'%}
+      <!-- Activities End -->
+    </div>
+  </main>
+{% endblock content %}

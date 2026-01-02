@@ -1,0 +1,33 @@
+{% extends 'main.html' %}
+
+{% block content %}
+<main class="layout layout--3">
+  <div class="container">
+    <div class="roomList">
+      <div class="roomList__header">
+        <div>
+          <h2>Friend Requests</h2>
+        </div>
+      </div>
+
+      {% if friend_requests %}
+        <div class="friend-requests-list">
+          {% for request in friend_requests %}
+            <div class="friend-request-item">
+              <div class="friend-request-item__info">
+                <a href="{% url 'user-profile' request.from_user.id %}">@{{ request.from_user.username }}</a> wants to be your friend.
+              </div>
+              <div class="friend-request-item__actions">
+                <a href="{% url 'manage_friend_request' request.from_user.id 'accept' %}" class="btn btn--main">Accept</a>
+                <a href="{% url 'manage_friend_request' request.from_user.id 'decline' %}" class="btn btn--pill" style="background-color: #dc3545; color: white;">Decline</a>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p>You have no pending friend requests.</p>
+      {% endif %}
+    </div>
+  </div>
+</main>
+{% endblock content %}

@@ -1,0 +1,119 @@
+{% extends 'main.html' %}
+{% load static %}
+
+{% block content %}
+    <!-- 1. Include Leaflet.js CSS and JS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+          crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+            crossorigin=""></script>
+    
+    <style>
+        /* Adjust map height to fit within the content area */
+        #map { 
+            height: 80vh; /* Adjust as needed */
+            width: 100%;
+            border-radius: 5px; /* Optional: for aesthetics */
+        }
+        /* Style for popups to match the feed */
+        .leaflet-popup-content-wrapper {
+            background: var(--color-dark);
+            color: var(--color-light);
+        }
+        .leaflet-popup-content {
+            margin: 13px 20px 13px 13px;
+        }
+    </style>
+
+    <main class="layout">
+        <div class="container">
+            <div class="layout__box">
+                <div class="layout__boxHeader">
+                    <div class="layout__boxTitle">
+                        <a href="javascript:history.back()">
+                            <svg version="1.1" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+                                <title>arrow-left</title>
+                                <path
+                                    d="M13.723 2.286l-13.723 13.714 13.719 13.714 1.616-1.611-10.96-10.96h27.625v-2.286h-27.625l10.965-10.965-1.616-1.607z"
+                                ></path>
+                            </svg>
+                        </a>
+                        <h3>Your Memory Map</h3>
+                    </div>
+                </div>
+                <div class="layout__body">
+                    <!-- 2. The div where the map will be rendered -->
+                    <div id="map"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // 3. Initialize the map
+        // The map is centered on the initial coordinates passed from the Django view.
+        const map = L.map('map').setView([{{ initial_lat }}, {{ initial_lon }}], 13);
+
+        // 4. Add the map tiles (the actual map image)
+        // We're using OpenStreetMap, a free and open map source.
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        // 5. Fetch post data from our API and add pins to the map
+        fetch("{% url 'api-get-posts' %}")
+            .then(response => response.json())
+            .then(posts => {
+                const postUrlTemplate = "{% url 'post' 99999 %}";
+                const profileUrlTemplate = "{% url 'user-profile' 99999 %}";
+
+                posts.forEach(post => {
+                    // For each post, create a marker (a pin)
+                    const marker = L.marker([post.lat, post.lon]).addTo(map);
+
+                    // Create the correct URLs for this specific post
+                    const postPageUrl = postUrlTemplate.replace('99999', post.id);
+                    const profilePageUrl = profileUrlTemplate.replace('99999', post.author_id);
+
+                    const popupContent = `
+                        <a href="${postPageUrl}" style="text-decoration: none; color: inherit;">
+                            <div class="roomListRoom" style="background-color: var(--color-dark-medium); margin-bottom: 0; max-width: 300px;">
+                                <div class="roomListRoom__header">
+                                    <div href="${profilePageUrl}" class="roomListRoom__author">
+                                        <div class="avatar avatar--small">
+                                            <img src="https://randomuser.me/api/portraits/women/11.jpg" />
+                                        </div>
+                                        <span>@${post.author}</span>
+                                    </div>
+                                    <div class="roomListRoom__actions">
+                                        <span>${post.created_ago}</span>
+                                    </div>
+                                </div>
+                                <div class="roomListRoom__content">
+                                    <p>${post.caption}</p>
+                                </div>
+                                ${post.photo_url ? `<img src="${post.photo_url}" alt="Post photo" style="width:100%; max-height: 150px; object-fit: cover; border-radius: 5px; margin-top: 1rem;">` : ''}
+                                <div class="roomListRoom__meta" style="margin-top: 1rem;">
+                                    <div class="roomListRoom__joined">
+                                        <svg version="1.1" xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 32 32"><title>user-group</title><path d="M30.539 20.766c-2.69-1.547-5.75-2.427-8.92-2.662 0.649 0.291 1.303 0.575 1.918 0.928 0.715 0.412 1.288 1.005 1.71 1.694 1.507 0.419 2.956 1.003 4.298 1.774 0.281 0.162 0.456 0.487 0.456 0.85v4.65h-4v2h5c0.553 0 1-0.447 1-1v-5.65c0-1.077-0.56-2.067-1.461-2.584z"></path><path d="M22.539 20.766c-6.295-3.619-14.783-3.619-21.078 0-0.901 0.519-1.461 1.508-1.461 2.584v5.65c0 0.553 0.447 1 1 1h22c0.553 0 1-0.447 1-1v-5.651c0-1.075-0.56-2.064-1.461-2.583zM22 28h-20v-4.65c0-0.362 0.175-0.688 0.457-0.85 5.691-3.271 13.394-3.271 19.086 0 0.282 0.162 0.457 0.487 0.457 0.849v4.651z"></path><path d="M19.502 4.047c0.166-0.017 0.33-0.047 0.498-0.047 2.757 0 5 2.243 5 5s-2.243 5-5 5c-0.168 0-0.332-0.030-0.498-0.047-0.424 0.641-0.944 1.204-1.513 1.716 0.651 0.201 1.323 0.331 2.011 0.331 3.859 0 7-3.141 7-7s-3.141-7-7-7c-0.688 0-1.36 0.131-2.011 0.331 0.57 0.512 1.089 1.075 1.513 1.716z"></path><path d="M12 16c3.859 0 7-3.141 7-7s-3.141-7-7-7c-3.859 0-7 3.141-7 7s3.141 7 7 7zM12 4c2.757 0 5 2.243 5 5s-2.243 5-5 5-5-2.243-5-5c0-2.757 2.243-5 5-5z"></path></svg>
+                                        ${post.comments_count} Commented
+                                    </div>
+                                    <p class="roomListRoom__topic">${post.topic}</p>
+                                </div>
+                            </div>
+                        </a>
+                    `;
+
+                    // Bind the popup to the marker to show on hover.
+                    marker.bindPopup(popupContent).on('mouseover', function (e) {
+                        this.openPopup();
+                    });
+                });
+            })
+            .catch(error => console.error('Error fetching post data:', error));
+
+    </script>
+{% endblock content %}
