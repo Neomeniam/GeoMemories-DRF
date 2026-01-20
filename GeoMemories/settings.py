@@ -218,17 +218,26 @@ CLOUDINARY_STORAGE = {
 
 SECURE_SSL_REDIRECT = True
 
-# --- FIX: ROBUST STORAGE SWITCH ---
-# We check the specific variable we just added to Render.
-# cast=bool handles "True", "true", "1", etc. automatically.
-USE_CLOUDINARY = config('USE_CLOUDINARY', default=False, cast=bool)
+CLOUDINARY_STORAGE = {
+    'CLOUD_NAME': config('CLOUDINARY_CLOUD_NAME', default=''),
+    'API_KEY': config('CLOUDINARY_API_KEY', default=''),
+    'API_SECRET': config('CLOUDINARY_API_SECRET', default=''),
+    'SECURE': True,
+}
 
-if USE_CLOUDINARY:
-    # PRODUCTION: Use Cloudinary
+SECURE_SSL_REDIRECT = True
+
+# --- FIX: USE RENDER'S BUILT-IN VARIABLE ---
+# Render automatically injects 'RENDER_EXTERNAL_HOSTNAME' in production.
+# We use this to detect the environment reliably.
+RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
+
+if RENDER_EXTERNAL_HOSTNAME:
+    print("🚀 CONFIG: Detected Render Environment -> Using Cloudinary Storage")
     DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
     DEBUG = False 
 else:
-    # LOCAL: Use Hard Drive
+    print("💻 CONFIG: Detected Local Environment -> Using Local Storage")
     DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
     MEDIA_URL = '/media/'
     MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
