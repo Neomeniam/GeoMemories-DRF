@@ -218,13 +218,17 @@ CLOUDINARY_STORAGE = {
 
 SECURE_SSL_REDIRECT = True
 
-# SMART SWITCH
-# If running on Render (Cloud), use Cloudinary.
-# If running locally (DEBUG=True), use normal hard drive storage.
-if not DEBUG:
+# FIX: Explicitly check for RENDER environment variable
+# This ensures Cloudinary is ALWAYS used when deployed on Render
+IS_RENDER = os.environ.get('RENDER', False)
+
+if IS_RENDER:
+    # PRODUCTION (Render) -> Use Cloudinary
     DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
+    DEBUG = False 
 else:
-    # Local Development Settings
+    # LOCAL DEVELOPMENT -> Use Local Storage
     DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
     MEDIA_URL = '/media/'
     MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+    DEBUG = True
