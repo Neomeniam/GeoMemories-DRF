@@ -218,27 +218,31 @@ CLOUDINARY_STORAGE = {
 
 SECURE_SSL_REDIRECT = True
 
-CLOUDINARY_STORAGE = {
-    'CLOUD_NAME': config('CLOUDINARY_CLOUD_NAME', default=''),
-    'API_KEY': config('CLOUDINARY_API_KEY', default=''),
-    'API_SECRET': config('CLOUDINARY_API_SECRET', default=''),
-    'SECURE': True,
-}
-
-SECURE_SSL_REDIRECT = True
-
-# --- FIX: USE RENDER'S BUILT-IN VARIABLE ---
-# Render automatically injects 'RENDER_EXTERNAL_HOSTNAME' in production.
-# We use this to detect the environment reliably.
+# --- FIX: DJANGO 5 STORAGES CONFIG ---
 RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
 
 if RENDER_EXTERNAL_HOSTNAME:
-    print("🚀 CONFIG: Detected Render Environment -> Using Cloudinary Storage")
-    DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
-    DEBUG = False 
+    print("🚀 CONFIG: Detected Render Environment -> Using Cloudinary Storage (Django 5)")
+    DEBUG = False
+    STORAGES = {
+        "default": {
+            "BACKEND": "cloudinary_storage.storage.MediaCloudinaryStorage",
+        },
+        "staticfiles": {
+            "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        },
+    }
 else:
-    print("💻 CONFIG: Detected Local Environment -> Using Local Storage")
-    DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
+    print("💻 CONFIG: Detected Local Environment -> Using Local Storage (Django 5)")
+    DEBUG = True
     MEDIA_URL = '/media/'
     MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
-    DEBUG = True
+    
+    STORAGES = {
+        "default": {
+            "BACKEND": "django.core.files.storage.FileSystemStorage",
+        },
+        "staticfiles": {
+            "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        },
+    }
