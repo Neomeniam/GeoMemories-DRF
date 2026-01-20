@@ -206,12 +206,17 @@ LOGGING = {
     },
 }
 
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
 # Cloudinary Configuration
 CLOUDINARY_STORAGE = {
     'CLOUD_NAME': config('CLOUDINARY_CLOUD_NAME', default=''),
     'API_KEY': config('CLOUDINARY_API_KEY', default=''),
     'API_SECRET': config('CLOUDINARY_API_SECRET', default=''),
+    'SECURE': True,
 }
+
+SECURE_SSL_REDIRECT = True
 
 # SMART SWITCH
 # If running on Render (Cloud), use Cloudinary.
