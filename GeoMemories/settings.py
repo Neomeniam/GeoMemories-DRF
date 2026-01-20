@@ -213,11 +213,13 @@ CLOUDINARY_STORAGE = {
     'API_SECRET': config('CLOUDINARY_API_SECRET', default=''),
 }
 
-# FORCE CLOUDINARY IN PRODUCTION
-# We check if we are running on Render by looking for the 'RENDER' env var
+# SMART SWITCH
+# If running on Render (Cloud), use Cloudinary.
+# If running locally (DEBUG=True), use normal hard drive storage.
 if 'RENDER' in os.environ:
-    # Production: Save to Cloud
     DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
 else:
-    # Localhost: Save to disk
+    # Local Development Settings
     DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
+    MEDIA_URL = '/media/'
+    MEDIA_ROOT = os.path.join(BASE_DIR, 'media')

@@ -1,8 +1,9 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.contrib.gis.geos import Point
-from django.db.models import Q  # <--- NEW IMPORT needed for queries
-from .models import Post, Friendship, Comment, Notification
+from django.db.models import Q
+# 1. ADD PostMedia to imports
+from .models import Post, PostMedia, Friendship, Comment, Notification 
 
 User = get_user_model()
 
@@ -14,18 +15,25 @@ class LocationField(serializers.Field):
         try:
             return Point(float(data['longitude']), float(data['latitude']), srid=4326)
         except (KeyError, ValueError, TypeError):
-            raise serializers.ValidationError("Invalid location. Expected {'latitude': float, 'longitude': float}")
+            raise serializers.ValidationError("Invalid location.")
 
 class UserProfileSerializer(serializers.ModelSerializer):
     post_count = serializers.SerializerMethodField()
-    friendship_status = serializers.SerializerMethodField() # <--- NEW FIELD
+    friends_count = serializers.SerializerMethodField() # <--- NEW
+    friendship_status = serializers.SerializerMethodField()
+    friend_request_id = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'bio', 'avatar', 'post_count', 'friendship_status'] # <--- Added to fields
+        fields = ['id', 'username', 'email', 'bio', 'avatar', 'post_count', 'friends_count', 'friendship_status', 'friend_request_id']
 
     def get_post_count(self, obj):
         return obj.post_set.count()
+
+    def get_friends_count(self, obj):
+        return Friendship.objects.filter(
+            (Q(from_user=obj) | Q(to_user=obj)) & Q(status='accepted')
+        ).count()
 
     def get_friendship_status(self, obj):
         request = self.context.get('request')
@@ -36,8 +44,6 @@ class UserProfileSerializer(serializers.ModelSerializer):
         if user == obj:
             return 'self'
 
-        # 1. Check if they are already friends (Status = accepted)
-        # We check both directions (User A -> User B OR User B -> User A)
         friends = Friendship.objects.filter(
             (Q(from_user=user, to_user=obj) | Q(from_user=obj, to_user=user)),
             status='accepted'
@@ -45,26 +51,27 @@ class UserProfileSerializer(serializers.ModelSerializer):
         if friends:
             return 'friends'
 
-        # 2. Check if I sent a request (Status = pending)
-        sent_request = Friendship.objects.filter(
-            from_user=user, 
-            to_user=obj, 
-            status='pending'
-        ).exists()
+        sent_request = Friendship.objects.filter(from_user=user, to_user=obj, status='pending').exists()
         if sent_request:
             return 'sent'
 
-        # 3. Check if they sent me a request (Status = pending)
-        received_request = Friendship.objects.filter(
-            from_user=obj, 
-            to_user=user, 
-            status='pending'
-        ).exists()
+        received_request = Friendship.objects.filter(from_user=obj, to_user=user, status='pending').exists()
         if received_request:
             return 'received'
 
         return 'none'
 
+    def get_friend_request_id(self, obj):
+        request = self.context.get('request')
+        if not request or not request.user.is_authenticated:
+            return None
+        friend_request = Friendship.objects.filter(
+            from_user=obj,
+            to_user=request.user,
+            status='pending'
+        ).first()
+        return friend_request.id if friend_request else None
+    
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
 
@@ -95,6 +102,12 @@ class CommentSerializer(serializers.ModelSerializer):
             return obj.author == request.user
         return False
 
+# 2. NEW SERIALIZER: Handles individual photos/videos
+class PostMediaSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PostMedia
+        fields = ['id', 'file', 'media_type']
+
 class PostSerializer(serializers.ModelSerializer):
     author = UserProfileSerializer(read_only=True)
     location = LocationField(required=False, allow_null=True)
@@ -103,10 +116,13 @@ class PostSerializer(serializers.ModelSerializer):
     is_liked = serializers.SerializerMethodField()
     comments = CommentSerializer(many=True, read_only=True)
     is_owner = serializers.SerializerMethodField()
+    media = PostMediaSerializer(many=True, read_only=True)
 
     class Meta:
         model = Post
-        fields = ['id', 'author', 'caption', 'image', 'location', 'created_at', 'like_count', 'comment_count', 'is_liked', 'comments', 'is_owner']
+        fields = ['id', 'author', 'caption', 'media', 'location', 'created_at', 
+                  'like_count', 'comment_count', 'is_liked', 'comments', 'is_owner',
+                  'visibility', 'location_access']
         read_only_fields = ['id', 'created_at', 'author']
 
     def get_like_count(self, obj):
