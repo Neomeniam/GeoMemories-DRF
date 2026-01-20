@@ -221,7 +221,7 @@ SECURE_SSL_REDIRECT = True
 # SMART SWITCH
 # If running on Render (Cloud), use Cloudinary.
 # If running locally (DEBUG=True), use normal hard drive storage.
-if 'RENDER' in os.environ:
+if not DEBUG:
     DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
 else:
     # Local Development Settings
