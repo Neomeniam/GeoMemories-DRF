@@ -229,8 +229,8 @@ if RENDER_EXTERNAL_HOSTNAME:
             "BACKEND": "cloudinary_storage.storage.MediaCloudinaryStorage",
         },
         "staticfiles": {
-            # CHANGED: Removed 'Manifest' to prevent crashes on missing admin files
-            "BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",
+            # CHANGED: Use standard Django storage to prevent build crashes
+            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
         },
     }
 else:
@@ -244,7 +244,6 @@ else:
             "BACKEND": "django.core.files.storage.FileSystemStorage",
         },
         "staticfiles": {
-            # CHANGED: Removed 'Manifest' here too for consistency
-            "BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",
+            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
         },
     }
