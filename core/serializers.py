@@ -108,9 +108,14 @@ class PostMediaSerializer(serializers.ModelSerializer):
         model = PostMedia
         fields = ['id', 'file', 'media_type']
 
+
 class PostSerializer(serializers.ModelSerializer):
     author = UserProfileSerializer(read_only=True)
-    location = LocationField(required=False, allow_null=True)
+    # 1. NEW FIELDS: These act as the "interface" for the Android app
+    latitude = serializers.FloatField(required=False, allow_null=True, write_only=True) 
+    longitude = serializers.FloatField(required=False, allow_null=True, write_only=True)
+    
+    # Existing fields
     like_count = serializers.IntegerField(source='likes.count', read_only=True)
     comment_count = serializers.SerializerMethodField()
     is_liked = serializers.SerializerMethodField()
@@ -120,11 +125,44 @@ class PostSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Post
-        fields = ['id', 'author', 'caption', 'media', 'location', 'created_at', 
-                  'like_count', 'comment_count', 'is_liked', 'comments', 'is_owner',
-                  'visibility', 'location_access']
+        # 2. UPDATE FIELDS LIST: Add 'latitude' and 'longitude' so they are accepted
+        fields = [
+            'id', 'author', 'caption', 'media', 'created_at', 
+            'like_count', 'comment_count', 'is_liked', 'comments', 'is_owner',
+            'visibility', 'location_access',
+            'latitude', 'longitude' # <--- ADDED
+        ]
         read_only_fields = ['id', 'created_at', 'author']
 
+    # 3. READ: Convert Database Point -> Android Numbers
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        # Manually inject lat/lng into the JSON response
+        if instance.location:
+            data['latitude'] = instance.location.y
+            data['longitude'] = instance.location.x
+        else:
+            data['latitude'] = None
+            data['longitude'] = None
+        return data
+
+    # 4. WRITE: Convert Android Numbers -> Database Point
+    def create(self, validated_data):
+        # Extract the numbers
+        lat = validated_data.pop('latitude', None)
+        lng = validated_data.pop('longitude', None)
+
+        # Build the Point object
+        if lat is not None and lng is not None:
+            try:
+                validated_data['location'] = Point(float(lng), float(lat))
+            except (ValueError, TypeError):
+                pass 
+
+        # Proceed with standard creation
+        return super().create(validated_data)
+
+    # --- Your Existing Helper Methods ---
     def get_like_count(self, obj):
         return obj.likes.count()
 
