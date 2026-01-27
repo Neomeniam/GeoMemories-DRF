@@ -14,7 +14,7 @@ from pathlib import Path
 from decouple import config
 import os
 import dj_database_url
-# 2025.10.14 changed for creating note
+from datetime import timedelta
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -74,6 +74,15 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
     ),
+}
+
+# FIX: Extend Token Lifetime to prevent constant 401 errors during Dev
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(days=30),  # Was 5 minutes
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=60), # Was 1 day
+    'ROTATE_REFRESH_TOKENS': True,
+    'BLACKLIST_AFTER_ROTATION': True,
+    'AUTH_HEADER_TYPES': ('Bearer',),
 }
 
 
