@@ -201,8 +201,11 @@ class PostSerializer(serializers.ModelSerializer):
         return False
 
     def get_comments(self, obj):
-        qs = obj.comments.all().order_by('-created_at')[:3]
-        return CommentSerializer(qs, many=True).data
+        # FIX: Added .filter(parent=None)
+        # This ensures we only fetch "Root" comments. 
+        # The serializer will handle fetching the replies recursively.
+        qs = obj.comments.filter(parent=None).order_by('-created_at')
+        return CommentSerializer(qs, many=True, context=self.context).data
 
     def get_is_owner(self, obj):
         request = self.context.get('request')
