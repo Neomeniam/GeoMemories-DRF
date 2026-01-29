@@ -121,11 +121,14 @@ class CommentSerializer(serializers.ModelSerializer):
 
     # Recursive: Fetch replies for this comment
     def get_replies(self, obj):
-        # Optimization: Only fetch replies for top-level comments to prevent deep nesting performance hits
-        if obj.parent is None:
-            serializer = CommentSerializer(obj.replies.all(), many=True, context=self.context)
-            return serializer.data
-        return []
+        # If this comment HAS a parent, it is already a "Level 2" comment.
+        # We should NOT return further replies for it to prevent deep nesting.
+        if obj.parent is not None:
+            return []
+            
+        # Otherwise, fetch its children
+        serializer = CommentSerializer(obj.replies.all(), many=True, context=self.context)
+        return serializer.data
     
 # 2. NEW SERIALIZER: Handles individual photos/videos
 class PostMediaSerializer(serializers.ModelSerializer):
@@ -201,9 +204,8 @@ class PostSerializer(serializers.ModelSerializer):
         return False
 
     def get_comments(self, obj):
-        # FIX: Ensure this .filter(parent=None) is present!
-        # If you miss this filter, replies show up twice.
-        qs = obj.comments.filter(parent=None).order_by('-created_at')[:3] # Limit to 3 for preview, or remove slice for full list
+        # This filter is the KEY. It stops replies from appearing as root comments.
+        qs = obj.comments.filter(parent=None).order_by('-created_at')
         return CommentSerializer(qs, many=True, context=self.context).data
 
     def get_is_owner(self, obj):

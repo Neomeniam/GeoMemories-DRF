@@ -363,7 +363,34 @@ class NotificationViewSet(viewsets.ModelViewSet):
     http_method_names = ['get', 'post', 'head', 'options']
 
     def get_queryset(self):
-        return Notification.objects.filter(recipient=self.request.user)
+        # 1. Get basic list
+        queryset = Notification.objects.filter(recipient=self.request.user)
+        
+        # 2. CLEANUP LOGIC: Filter out "stale" friend requests
+        # We want to keep:
+        # a) Notifications that are NOT friend requests (likes, comments)
+        # b) Friend requests that are STILL 'pending'
+        
+        valid_ids = []
+        for notif in queryset:
+            if notif.type == 'friend_request':
+                # Check the actual Friendship status
+                # We assume the sender of the notif is the 'from_user' of the request
+                is_still_pending = Friendship.objects.filter(
+                    from_user=notif.sender,
+                    to_user=self.request.user,
+                    status='pending'
+                ).exists()
+                
+                if is_still_pending:
+                    valid_ids.append(notif.id)
+                else:
+                    # Optional: Auto-delete stale notification to clean DB
+                    notif.delete()
+            else:
+                valid_ids.append(notif.id)
+                
+        return Notification.objects.filter(id__in=valid_ids).order_by('-created_at')
 
     @action(detail=False, methods=['post'])
     def mark_read(self, request):
