@@ -274,8 +274,19 @@ class FriendRequestViewSet(viewsets.ModelViewSet):
         friend_request = self.get_object()
         if friend_request.to_user != request.user:
             return Response({'error': 'Not authorized'}, status=status.HTTP_403_FORBIDDEN)
+        
         friend_request.status = 'accepted'
         friend_request.save()
+        
+        # --- FIX: Clean up the Notification ---
+        # Find notifications about this specific friend request (or just generic friend requests from this user)
+        # Since our Notification model links to Post (not FriendRequest), we rely on Sender + Type
+        Notification.objects.filter(
+            recipient=request.user,
+            sender=friend_request.from_user,
+            type='friend_request'
+        ).delete()
+
         return Response({'status': 'accepted'})
 
     @action(detail=True, methods=['post'])
@@ -283,8 +294,17 @@ class FriendRequestViewSet(viewsets.ModelViewSet):
         friend_request = self.get_object()
         if friend_request.to_user != request.user:
             return Response({'error': 'Not authorized'}, status=status.HTTP_403_FORBIDDEN)
+        
         friend_request.status = 'rejected'
         friend_request.save()
+
+        # --- FIX: Clean up the Notification ---
+        Notification.objects.filter(
+            recipient=request.user,
+            sender=friend_request.from_user,
+            type='friend_request'
+        ).delete()
+
         return Response({'status': 'declined'})
 
 class CommentViewSet(viewsets.ModelViewSet):
