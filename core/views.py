@@ -302,13 +302,7 @@ class CommentViewSet(viewsets.ModelViewSet):
         return queryset
 
     def perform_create(self, serializer):
-        # Handle 'parent_id' if it exists in the request body
-        parent_id = self.request.data.get('parent_id')
-        parent_comment = None
-        if parent_id:
-            parent_comment = get_object_or_404(Comment, id=parent_id)
-            
-        serializer.save(author=self.request.user, parent=parent_comment)
+        serializer.save(author=self.request.user)
 
     def update(self, request, *args, **kwargs):
         comment = self.get_object()

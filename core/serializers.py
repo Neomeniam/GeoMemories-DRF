@@ -96,6 +96,8 @@ class CommentSerializer(serializers.ModelSerializer):
     like_count = serializers.ReadOnlyField()
     replies = serializers.SerializerMethodField() 
 
+    parent = serializers.PrimaryKeyRelatedField(queryset=Comment.objects.all(), required=False, allow_null=True)
+    
     class Meta:
         model = Comment
         fields = [
