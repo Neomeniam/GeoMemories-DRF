@@ -339,6 +339,7 @@ class CommentViewSet(viewsets.ModelViewSet):
 class NotificationViewSet(viewsets.ModelViewSet): 
     serializer_class = NotificationSerializer
     permission_classes = [permissions.IsAuthenticated]
+    pagination_class = None
     http_method_names = ['get', 'post', 'head', 'options']
 
     def get_queryset(self):
