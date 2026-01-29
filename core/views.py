@@ -296,11 +296,19 @@ class CommentViewSet(viewsets.ModelViewSet):
         queryset = super().get_queryset()
         post_id = self.request.query_params.get('post_id')
         if post_id:
-            queryset = queryset.filter(post_id=post_id)
+            # Only return top-level comments (parents) initially
+            # The 'replies' field in the serializer will handle the nested ones
+            queryset = queryset.filter(post_id=post_id, parent=None)
         return queryset
 
     def perform_create(self, serializer):
-        serializer.save(author=self.request.user)
+        # Handle 'parent_id' if it exists in the request body
+        parent_id = self.request.data.get('parent_id')
+        parent_comment = None
+        if parent_id:
+            parent_comment = get_object_or_404(Comment, id=parent_id)
+            
+        serializer.save(author=self.request.user, parent=parent_comment)
 
     def update(self, request, *args, **kwargs):
         comment = self.get_object()
@@ -313,6 +321,26 @@ class CommentViewSet(viewsets.ModelViewSet):
         if comment.author != request.user:
             return Response({'error': 'You can only delete your own comments'}, status=status.HTTP_403_FORBIDDEN)
         return super().destroy(request, *args, **kwargs)
+
+    # --- NEW ACTION: Like/Unlike Comment ---
+    @action(detail=True, methods=['post'])
+    def like(self, request, pk=None):
+        comment = self.get_object()
+        user = request.user
+        
+        if comment.likes.filter(id=user.id).exists():
+            comment.likes.remove(user)
+            liked = False
+        else:
+            comment.likes.add(user)
+            liked = True
+            
+        return Response({
+            'status': 'success',
+            'is_liked': liked,
+            'like_count': comment.like_count
+        })
+    
     
 class NotificationViewSet(viewsets.ModelViewSet): 
     serializer_class = NotificationSerializer

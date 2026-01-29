@@ -99,11 +99,32 @@ class Comment(models.Model):
     text = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
 
+    # --- NEW FIELDS FOR SPRINT 1 ---
+    # 1. Parent: Links to another comment (Self-Referential)
+    parent = models.ForeignKey(
+        'self',
+        null=True,
+        blank=True,
+        related_name='replies',
+        on_delete=models.CASCADE
+    )
+    
+    # 2. Likes: Users who liked this comment
+    likes = models.ManyToManyField(
+        settings.AUTH_USER_MODEL,
+        related_name='liked_comments',
+        blank=True
+    )
+
     class Meta:
         ordering = ['created_at']
 
     def __str__(self):
         return f'Comment by {self.author.username} on {self.post}'
+    
+    @property
+    def like_count(self):
+        return self.likes.count()
 
 
 # =========================
@@ -234,13 +255,28 @@ def create_like_notification(sender, instance, created, **kwargs):
 
 @receiver(post_save, sender=Comment)
 def create_comment_notification(sender, instance, created, **kwargs):
-    if created and instance.author != instance.post.author:
-        Notification.objects.create(
-            sender=instance.author,
-            recipient=instance.post.author,
-            type=Notification.TYPE_COMMENT,
-            post=instance.post
-        )
+    if created:
+        # Scenario A: It is a Reply
+        if instance.parent:
+            # Notify the author of the parent comment
+            if instance.author != instance.parent.author:
+                Notification.objects.create(
+                    sender=instance.author,
+                    recipient=instance.parent.author,
+                    type=Notification.TYPE_COMMENT,
+                    post=instance.post # Links back to main post
+                )
+        
+        # Scenario B: It is a Top-Level Comment
+        else:
+            # Notify the Post Author
+            if instance.author != instance.post.author:
+                Notification.objects.create(
+                    sender=instance.author,
+                    recipient=instance.post.author,
+                    type=Notification.TYPE_COMMENT,
+                    post=instance.post
+                )
 
 
 @receiver(post_save, sender=Friendship)

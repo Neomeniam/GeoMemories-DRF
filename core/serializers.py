@@ -90,11 +90,19 @@ class RegisterSerializer(serializers.ModelSerializer):
 class CommentSerializer(serializers.ModelSerializer):
     author = UserProfileSerializer(read_only=True)
     is_owner = serializers.SerializerMethodField()
+    
+    # --- NEW FIELDS ---
+    is_liked = serializers.SerializerMethodField()
+    like_count = serializers.ReadOnlyField()
+    replies = serializers.SerializerMethodField() 
 
     class Meta:
         model = Comment
-        fields = ['id', 'post', 'author', 'text', 'created_at', 'is_owner']
-        read_only_fields = ['id', 'created_at', 'author', 'post']
+        fields = [
+            'id', 'post', 'author', 'text', 'created_at', 
+            'is_owner', 'parent', 'is_liked', 'like_count', 'replies'
+        ]
+        read_only_fields = ['id', 'created_at', 'author', 'post', 'likes']
 
     def get_is_owner(self, obj):
         request = self.context.get('request')
@@ -102,6 +110,21 @@ class CommentSerializer(serializers.ModelSerializer):
             return obj.author == request.user
         return False
 
+    # Check if current user liked this comment
+    def get_is_liked(self, obj):
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            return obj.likes.filter(id=request.user.id).exists()
+        return False
+
+    # Recursive: Fetch replies for this comment
+    def get_replies(self, obj):
+        # Optimization: Only fetch replies for top-level comments to prevent deep nesting performance hits
+        if obj.parent is None:
+            serializer = CommentSerializer(obj.replies.all(), many=True, context=self.context)
+            return serializer.data
+        return []
+    
 # 2. NEW SERIALIZER: Handles individual photos/videos
 class PostMediaSerializer(serializers.ModelSerializer):
     class Meta:
